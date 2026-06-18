@@ -9,7 +9,6 @@
   // ===== DOM 元素 =====
   var app = document.getElementById('app');
   var musicBtn = document.getElementById('musicBtn');
-  var bgMusic = document.getElementById('bgMusic');
   var firefliesContainer = document.getElementById('fireflies');
   var zongzi = document.getElementById('zongzi');
   var zongziArea = document.getElementById('zongziArea');
@@ -51,33 +50,104 @@
     firefliesContainer.appendChild(frag);
   }
 
-  // ===== 音乐按钮 =====
+  // ===== Web Audio API 温馨背景音乐 =====
+  var audioCtx = null;
+  var masterGain = null;
+  var oscillators = [];
+  var lfoGains = [];
+
+  /**
+   * 生成舒缓的 C 大调和弦环境音
+   * 频率：C4(262) E4(330) G4(392) C5(523)
+   */
+  function startAmbientMusic() {
+    if (audioCtx) return;
+    try {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    } catch (e) {
+      return;
+    }
+
+    // 主音量：非常轻柔
+    masterGain = audioCtx.createGain();
+    masterGain.gain.setValueAtTime(0, audioCtx.currentTime);
+    masterGain.gain.linearRampToValueAtTime(0.06, audioCtx.currentTime + 1.5);
+    masterGain.connect(audioCtx.destination);
+
+    // 低通滤波，让声音更温暖
+    var filter = audioCtx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(800, audioCtx.currentTime);
+    filter.Q.setValueAtTime(0.5, audioCtx.currentTime);
+    filter.connect(masterGain);
+
+    // C 大调和弦频率
+    var freqs = [261.63, 329.63, 392.00, 523.25];
+    // 每个音的初始相位微调，避免相位抵消
+    var detunes = [0, 3, -2, 5];
+
+    for (var i = 0; i < freqs.length; i++) {
+      // 主振荡器：正弦波，纯净温暖
+      var osc = audioCtx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freqs[i], audioCtx.currentTime);
+      osc.detune.setValueAtTime(detunes[i], audioCtx.currentTime);
+
+      // 每个音有自己的 LFO 增益，产生呼吸感
+      var lfoGain = audioCtx.createGain();
+      lfoGain.gain.setValueAtTime(0, audioCtx.currentTime);
+      lfoGain.gain.linearRampToValueAtTime(0.025 + Math.random() * 0.02, audioCtx.currentTime + 0.8 + i * 0.3);
+
+      // LFO：缓慢的正弦波调制音量，产生悠远的呼吸感
+      var lfo = audioCtx.createOscillator();
+      lfo.type = 'sine';
+      lfo.frequency.setValueAtTime(0.15 + Math.random() * 0.2, audioCtx.currentTime); // 非常慢的 LFO
+
+      var lfoAmp = audioCtx.createGain();
+      lfoAmp.gain.setValueAtTime(0.012, audioCtx.currentTime);
+
+      lfo.connect(lfoAmp);
+      lfoAmp.connect(lfoGain.gain);
+
+      osc.connect(lfoGain);
+      lfoGain.connect(filter);
+
+      osc.start(audioCtx.currentTime);
+      lfo.start(audioCtx.currentTime);
+
+      oscillators.push(osc);
+      lfoGains.push(lfoGain);
+    }
+  }
+
+  function stopAmbientMusic() {
+    if (!audioCtx) return;
+    masterGain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.6);
+    setTimeout(function () {
+      oscillators.forEach(function (o) { try { o.stop(); } catch (e) {} });
+      lfoGains.forEach(function () {});
+      oscillators = [];
+      lfoGains = [];
+      if (audioCtx && audioCtx.state !== 'closed') {
+        audioCtx.close();
+      }
+      audioCtx = null;
+      masterGain = null;
+    }, 700);
+  }
+
   function initMusic() {
     musicBtn.addEventListener('click', function (e) {
       e.stopPropagation();
       if (isMusicPlaying) {
-        bgMusic.pause();
+        stopAmbientMusic();
         musicBtn.classList.remove('playing');
         isMusicPlaying = false;
       } else {
-        // 播放音乐，忽略加载失败
-        var playPromise = bgMusic.play();
-        if (playPromise !== undefined) {
-          playPromise.then(function () {
-            musicBtn.classList.add('playing');
-            isMusicPlaying = true;
-          }).catch(function () {
-            // love.mp3 不存在，静默处理
-            musicBtn.classList.remove('playing');
-            isMusicPlaying = false;
-          });
-        }
+        startAmbientMusic();
+        musicBtn.classList.add('playing');
+        isMusicPlaying = true;
       }
-    });
-
-    // 音乐加载错误不报错
-    bgMusic.addEventListener('error', function () {
-      musicBtn.style.opacity = '0.4';
     });
   }
 

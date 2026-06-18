@@ -385,9 +385,9 @@ body {
 /* ===== 向日葵容器 ===== */
 .sunflower-container {
   position: absolute;
-  top: -80px;
+  top: -210px;
   left: 50%;
-  transform: translateX(-50%) translateY(60px);
+  transform: translateX(-50%) translateY(40px);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -399,7 +399,7 @@ body {
 
 /* 打开后向日葵升起 */
 .app.opened .sunflower-container {
-  transform: translateX(-50%) translateY(-20px);
+  transform: translateX(-50%) translateY(-30px);
   opacity: 1;
   pointer-events: auto;
 }
@@ -407,8 +407,8 @@ body {
 /* ===== 向日葵茎 ===== */
 .sunflower-stem {
   width: 4px;
-  height: 110px;
-  background: linear-gradient(180deg, var(--leaf-light) 0%, var(--leaf-green) 100%);
+  height: 80px;
+  background: linear-gradient(180deg, var(--leaf-green) 0%, var(--leaf-light) 100%);
   border-radius: 2px;
   position: relative;
 }
@@ -423,12 +423,12 @@ body {
   box-shadow: inset 0 1px 2px rgba(255,255,255,0.15);
 }
 .stem-leaf-left {
-  top: 45px;
+  top: 20px;
   left: -26px;
   transform: rotate(-20deg);
 }
 .stem-leaf-right {
-  top: 70px;
+  top: 42px;
   right: -26px;
   transform: rotate(20deg) scaleX(-1);
 }
@@ -438,7 +438,6 @@ body {
   position: relative;
   width: 170px;
   height: 170px;
-  margin-top: -6px;
   /* 花朵摇摆 */
   transform-origin: bottom center;
 }
@@ -1017,7 +1016,11 @@ body {
 
   .notes-container { height: 220px; }
 
+  .sunflower-container { top: -180px; }
   .sunflower-head { width: 145px; height: 145px; }
+  .sunflower-stem { height: 65px; }
+  .stem-leaf-left { top: 14px; }
+  .stem-leaf-right { top: 32px; }
   .petal-outer { width: 19px; height: 48px; margin-left: -9.5px; }
   .petal-inner { width: 16px; height: 40px; margin-left: -8px; }
   .sunflower-center { width: 54px; height: 54px; }
@@ -1047,7 +1050,11 @@ body {
   .zongzi { width: 140px; height: 160px; }
   .zongzi-body { width: 112px; height: 126px; }
 
+  .sunflower-container { top: -240px; }
   .sunflower-head { width: 200px; height: 200px; }
+  .sunflower-stem { height: 90px; }
+  .stem-leaf-left { top: 22px; }
+  .stem-leaf-right { top: 48px; }
   .petal-outer { width: 24px; height: 64px; margin-left: -12px; }
   .petal-inner { width: 20px; height: 52px; margin-left: -10px; }
   .sunflower-center { width: 72px; height: 72px; }

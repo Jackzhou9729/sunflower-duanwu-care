@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>莹宝 · 端午安康</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+
+  <!-- 主容器 -->
+  <div class="app" id="app">
+
+    <!-- 背景纹理层 -->
+    <div class="bg-texture"></div>
+
+    <!-- 萤火点点容器 -->
+    <div class="fireflies" id="fireflies"></div>
+
+    <!-- 音乐按钮 -->
+    <button class="music-btn" id="musicBtn" title="点我放音乐">
+      <span class="music-icon">♪</span>
+    </button>
+    <audio id="bgMusic" src="./love.mp3" loop preload="none"></audio>
+
+    <!-- ========== 第一幕：忙碌但被看见 ========== -->
+    <section class="scene scene-one" id="sceneOne">
+
+      <!-- 主标题 -->
+      <h1 class="main-title">莹宝，最近辛苦啦</h1>
+
+      <!-- 副标题 -->
+      <p class="sub-title">轻轻点开，把忙碌变成一朵小太阳</p>
+
+      <!-- 五张便签 -->
+      <div class="notes-container" id="notesContainer">
+        <div class="sticky-note" data-index="0">
+          <span class="note-text">今天也辛苦啦</span>
+        </div>
+        <div class="sticky-note" data-index="1">
+          <span class="note-text">再忙也要记得喝水</span>
+        </div>
+        <div class="sticky-note" data-index="2">
+          <span class="note-text">不要忘记好好吃饭</span>
+        </div>
+        <div class="sticky-note" data-index="3">
+          <span class="note-text">慢慢来，我在呢</span>
+        </div>
+        <div class="sticky-note" data-index="4">
+          <span class="note-text">你已经很棒啦</span>
+        </div>
+      </div>
+
+      <!-- 粽子区域 -->
+      <div class="zongzi-area" id="zongziArea">
+        <div class="zongzi" id="zongzi">
+          <!-- 左粽叶 -->
+          <div class="zongzi-leaf leaf-left"></div>
+          <!-- 右粽叶 -->
+          <div class="zongzi-leaf leaf-right"></div>
+          <!-- 粽子身体 -->
+          <div class="zongzi-body">
+            <div class="zongzi-string"></div>
+            <div class="zongzi-string string-2"></div>
+          </div>
+          <!-- 点击提示 -->
+          <div class="zongzi-hint">👆 点我</div>
+        </div>
+
+        <!-- 向日葵区域（初始隐藏，点击后升起） -->
+        <div class="sunflower-container" id="sunflowerContainer">
+          <!-- 茎 -->
+          <div class="sunflower-stem">
+            <div class="stem-leaf stem-leaf-left"></div>
+            <div class="stem-leaf stem-leaf-right"></div>
+          </div>
+          <!-- 花头 -->
+          <div class="sunflower-head" id="sunflowerHead">
+            <!-- 外层花瓣（12片） -->
+            <div class="petal petal-outer" style="--angle: 0deg;"></div>
+            <div class="petal petal-outer" style="--angle: 30deg;"></div>
+            <div class="petal petal-outer" style="--angle: 60deg;"></div>
+            <div class="petal petal-outer" style="--angle: 90deg;"></div>
+            <div class="petal petal-outer" style="--angle: 120deg;"></div>
+            <div class="petal petal-outer" style="--angle: 150deg;"></div>
+            <div class="petal petal-outer" style="--angle: 180deg;"></div>
+            <div class="petal petal-outer" style="--angle: 210deg;"></div>
+            <div class="petal petal-outer" style="--angle: 240deg;"></div>
+            <div class="petal petal-outer" style="--angle: 270deg;"></div>
+            <div class="petal petal-outer" style="--angle: 300deg;"></div>
+            <div class="petal petal-outer" style="--angle: 330deg;"></div>
+            <!-- 内层花瓣（12片，偏移15度） -->
+            <div class="petal petal-inner" style="--angle: 15deg;"></div>
+            <div class="petal petal-inner" style="--angle: 45deg;"></div>
+            <div class="petal petal-inner" style="--angle: 75deg;"></div>
+            <div class="petal petal-inner" style="--angle: 105deg;"></div>
+            <div class="petal petal-inner" style="--angle: 135deg;"></div>
+            <div class="petal petal-inner" style="--angle: 165deg;"></div>
+            <div class="petal petal-inner" style="--angle: 195deg;"></div>
+            <div class="petal petal-inner" style="--angle: 225deg;"></div>
+            <div class="petal petal-inner" style="--angle: 255deg;"></div>
+            <div class="petal petal-inner" style="--angle: 285deg;"></div>
+            <div class="petal petal-inner" style="--angle: 315deg;"></div>
+            <div class="petal petal-inner" style="--angle: 345deg;"></div>
+            <!-- 花心 -->
+            <div class="sunflower-center" id="sunflowerCenter">
+              <span class="center-name">莹宝</span>
+            </div>
+          </div>
+
+          <!-- 关怀词语容器 -->
+          <div class="care-words" id="careWords">
+            <span class="care-word" data-delay="0">辛苦啦</span>
+            <span class="care-word" data-delay="1">抱抱你</span>
+            <span class="care-word" data-delay="2">慢慢来</span>
+            <span class="care-word" data-delay="3">别太累</span>
+            <span class="care-word" data-delay="4">我在呢</span>
+            <span class="care-word" data-delay="5">端午安康</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 水波与龙舟 -->
+      <div class="water-area">
+        <div class="water-wave wave-1"></div>
+        <div class="water-wave wave-2"></div>
+        <div class="dragon-boat">
+          <div class="boat-hull"></div>
+          <div class="boat-sail"></div>
+          <div class="boat-head"></div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ========== 第三幕：端午向日葵祝福 ========== -->
+    <section class="scene scene-two" id="sceneTwo">
+
+      <!-- 祝福标题 -->
+      <h2 class="blessing-title" id="blessingTitle">端午安康，我的小太阳</h2>
+
+      <!-- 祝福正文，逐行淡入 -->
+      <div class="blessing-text" id="blessingText">
+        <p class="blessing-line" data-line="0">最近的你，一定很忙吧。</p>
+        <p class="blessing-line" data-line="1">忙着工作，忙着生活，</p>
+        <p class="blessing-line" data-line="2">忙着把每一天都认真过好。</p>
+        <p class="blessing-line" data-line="3">所以今天，我不催你往前走，</p>
+        <p class="blessing-line" data-line="4">只想把一朵向日葵送到你身边。</p>
+        <p class="blessing-line" data-line="5">愿它替我陪你晒晒太阳，</p>
+        <p class="blessing-line" data-line="6">替我提醒你按时吃饭，</p>
+        <p class="blessing-line" data-line="7">也替我悄悄告诉你：</p>
+        <p class="blessing-line emphasis" data-line="8">你已经很好很好了。</p>
+      </div>
+
+      <!-- 收下按钮 -->
+      <button class="receive-btn" id="receiveBtn">
+        <span class="btn-text">收下这朵小太阳</span>
+        <span class="btn-glow"></span>
+      </button>
+
+    </section>
+
+    <!-- 彩蛋卡片（初始隐藏） -->
+    <div class="surprise-overlay" id="surpriseOverlay">
+      <div class="surprise-card" id="surpriseCard">
+        <div class="surprise-inner">
+          <span class="surprise-icon">💛</span>
+          <p class="surprise-text">
+            莹宝，今天先把疲惫放一放，<br>
+            我把好运和喜欢都包给你。
+          </p>
+          <span class="surprise-icon">💛</span>
+        </div>
+        <button class="surprise-close" id="surpriseClose">✕</button>
+      </div>
+    </div>
+
+    <!-- 飘落元素容器 -->
+    <div class="falling-container" id="fallingContainer"></div>
+
+  </div>
+
+  <script src="./script.js"></script>
+</body>
+</html>

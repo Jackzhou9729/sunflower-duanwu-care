@@ -24,6 +24,7 @@
   // 状态标记
   var isOpened = false;       // 粽子是否已点击
   var isMusicPlaying = false; // 音乐是否播放中
+  var musicStarted = false;   // 音乐是否已启动（自动播放用）
   var fallingCount = 0;       // 当前飘落元素数量
   var MAX_FALLING = 30;       // 最大同时飘落数量
 
@@ -53,16 +54,40 @@
   // ===== Web Audio API 温馨背景音乐 =====
   var audioCtx = null;
   var masterGain = null;
-  var oscillators = [];
-  var lfoGains = [];
-  var allOscs = []; // 所有振荡器（含 LFO），停止时统一清理
+  var allNodes = [];      // 所有创建的节点，停止时统一清理
+  var melodyTimer = null;  // 旋律定时器
 
   /**
-   * 生成舒缓的 C 大调和弦环境音
-   * 频率：C4(262) E4(330) G4(392) C5(523)
+   * 创建单个音符（三角波，带柔和淡入淡出）
+   */
+  function playNote(freq, startTime, duration, vol, dest) {
+    if (!audioCtx) return;
+    var osc = audioCtx.createOscillator();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(freq, startTime);
+    allNodes.push(osc);
+
+    var g = audioCtx.createGain();
+    g.gain.setValueAtTime(0, startTime);
+    g.gain.linearRampToValueAtTime(vol, startTime + 0.08);
+    g.gain.setValueAtTime(vol, startTime + duration * 0.7);
+    g.gain.linearRampToValueAtTime(0, startTime + duration);
+    allNodes.push(g);
+
+    osc.connect(g);
+    g.connect(dest);
+    osc.start(startTime);
+    osc.stop(startTime + duration + 0.1);
+  }
+
+  /**
+   * 启动背景音乐（和弦铺底 + 轻柔旋律 + 延迟混响）
    */
   function startAmbientMusic(callback) {
-    if (audioCtx) { if (callback) callback(); return; }
+    if (audioCtx) {
+      if (callback) callback();
+      return;
+    }
     try {
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     } catch (e) {
@@ -70,61 +95,106 @@
       return;
     }
 
-    // resume() 是异步的，必须等它完成才能调度音频
     var ready = (audioCtx.state === 'suspended')
       ? audioCtx.resume()
       : Promise.resolve();
 
     ready.then(function () {
-      if (!audioCtx) return; // 可能在等待期间被 stop 了
-
+      if (!audioCtx) return;
       var t = audioCtx.currentTime;
 
-      // 主音量
+      // === 主音量 ===
       masterGain = audioCtx.createGain();
       masterGain.gain.setValueAtTime(0, t);
-      masterGain.gain.linearRampToValueAtTime(0.1, t + 1.5);
+      masterGain.gain.linearRampToValueAtTime(0.12, t + 2);
       masterGain.connect(audioCtx.destination);
+      allNodes.push(masterGain);
 
-      // 低通滤波
+      // === 混响模拟（Feedback Delay） ===
+      var delayGain = audioCtx.createGain();
+      delayGain.gain.setValueAtTime(0.25, t);
+      allNodes.push(delayGain);
+
+      var delay1 = audioCtx.createDelay(1);
+      delay1.delayTime.setValueAtTime(0.3, t);
+      allNodes.push(delay1);
+      var delay2 = audioCtx.createDelay(1);
+      delay2.delayTime.setValueAtTime(0.5, t);
+      allNodes.push(delay2);
+
+      // === 滤波器 ===
       var filter = audioCtx.createBiquadFilter();
       filter.type = 'lowpass';
-      filter.frequency.setValueAtTime(900, t);
-      filter.Q.setValueAtTime(0.4, t);
+      filter.frequency.setValueAtTime(1200, t);
+      filter.Q.setValueAtTime(0.5, t);
       filter.connect(masterGain);
+      allNodes.push(filter);
 
-      var freqs = [261.63, 329.63, 392.00, 523.25];
+      // 混响路由：filter → delay → gain → filter（反馈）
+      filter.connect(delay1);
+      delay1.connect(delay2);
+      delay2.connect(delayGain);
+      delayGain.connect(filter);
 
-      for (var i = 0; i < freqs.length; i++) {
-        var osc = audioCtx.createOscillator();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(freqs[i], t);
-        allOscs.push(osc);
+      // === 和弦铺底层（Cmaj7: C E G B，三角波 + 缓慢 LFO） ===
+      var chordFreqs = [261.63, 329.63, 392.00, 493.88];
+      for (var i = 0; i < chordFreqs.length; i++) {
+        var padGain = audioCtx.createGain();
+        padGain.gain.setValueAtTime(0, t);
+        padGain.gain.linearRampToValueAtTime(0.018, t + 1.5 + i * 0.5);
+        padGain.connect(filter);
+        allNodes.push(padGain);
 
-        var noteGain = audioCtx.createGain();
-        noteGain.gain.setValueAtTime(0, t);
-        noteGain.gain.linearRampToValueAtTime(0.03, t + 1 + i * 0.4);
-
+        // LFO 调制音量
         var lfo = audioCtx.createOscillator();
         lfo.type = 'sine';
-        lfo.frequency.setValueAtTime(0.1 + Math.random() * 0.15, t);
-        allOscs.push(lfo);
-
-        var lfoAmp = audioCtx.createGain();
-        lfoAmp.gain.setValueAtTime(0.015, t);
-
-        lfo.connect(lfoAmp);
-        lfoAmp.connect(noteGain.gain);
-        osc.connect(noteGain);
-        noteGain.connect(filter);
-
-        osc.start(t);
+        lfo.frequency.setValueAtTime(0.08 + i * 0.03, t);
+        allNodes.push(lfo);
+        var lfoG = audioCtx.createGain();
+        lfoG.gain.setValueAtTime(0.008, t);
+        allNodes.push(lfoG);
+        lfo.connect(lfoG);
+        lfoG.connect(padGain.gain);
         lfo.start(t);
 
-        oscillators.push(osc);
-        lfoGains.push(noteGain);
+        var osc = audioCtx.createOscillator();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(chordFreqs[i], t);
+        osc.connect(padGain);
+        osc.start(t);
+        allNodes.push(osc);
       }
 
+      // === 旋律层：轻柔五声音阶循环旋律 ===
+      // C4(262) D4(294) E4(330) G4(392) A4(440) C5(523)
+      var melody = [
+        330, 392, 440, 392,
+        330, 294, 262, 294,
+        330, 392, 440, 523,
+        440, 392, 330, 294,
+        262, 294, 330, 392,
+        440, 392, 330, 294,
+        262, 294, 330, 392,
+        440, 392, 330, 262
+      ];
+      var beat = 0.9; // 每拍时长（秒），~67 BPM
+      var melodyGain = audioCtx.createGain();
+      melodyGain.gain.setValueAtTime(0, t);
+      melodyGain.gain.linearRampToValueAtTime(0.025, t + 3);
+      melodyGain.connect(filter);
+      allNodes.push(melodyGain);
+
+      var noteIdx = 0;
+      function scheduleNext() {
+        if (!audioCtx) return;
+        var noteTime = audioCtx.currentTime + 0.1;
+        playNote(melody[noteIdx % melody.length], noteTime, beat * 0.85, 1.0, melodyGain);
+        noteIdx++;
+        melodyTimer = setTimeout(scheduleNext, beat * 1000);
+      }
+      scheduleNext();
+
+      musicStarted = true;
       if (callback) callback();
     }).catch(function () {
       if (callback) callback();
@@ -132,25 +202,26 @@
   }
 
   function stopAmbientMusic() {
+    if (melodyTimer) { clearTimeout(melodyTimer); melodyTimer = null; }
     if (!audioCtx) return;
     try {
-      if (masterGain) {
-        masterGain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.5);
-      }
+      if (masterGain) masterGain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.8);
     } catch (e) {}
     setTimeout(function () {
-      allOscs.forEach(function (o) { try { o.stop(); } catch (e) {} });
-      allOscs = [];
-      oscillators = [];
-      lfoGains = [];
+      allNodes.forEach(function (n) { try { n.disconnect(); } catch (e) {} });
+      allNodes = [];
       try {
         if (audioCtx && audioCtx.state !== 'closed') audioCtx.close();
       } catch (e) {}
       audioCtx = null;
       masterGain = null;
-    }, 600);
+      musicStarted = false;
+    }, 900);
   }
 
+  /**
+   * 音乐按钮：手动开关
+   */
   function initMusic() {
     musicBtn.addEventListener('click', function (e) {
       e.stopPropagation();
@@ -162,7 +233,6 @@
         musicBtn.classList.add('playing');
         isMusicPlaying = true;
         startAmbientMusic(function () {
-          // 如果启动失败，回退状态
           if (!audioCtx) {
             musicBtn.classList.remove('playing');
             isMusicPlaying = false;
@@ -170,6 +240,20 @@
         });
       }
     });
+
+    // 自动播放：页面任意首次点击即启动音乐
+    document.addEventListener('click', function autoStart() {
+      if (!musicStarted && !isMusicPlaying) {
+        isMusicPlaying = true;
+        musicBtn.classList.add('playing');
+        startAmbientMusic(function () {
+          if (!audioCtx) {
+            musicBtn.classList.remove('playing');
+            isMusicPlaying = false;
+          }
+        });
+      }
+    }, { once: true });
   }
 
   // ===== 粽子点击：第一幕 → 第二幕 =====

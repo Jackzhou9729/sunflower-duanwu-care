@@ -804,6 +804,14 @@ body {
   margin-top: 8px;
 }
 
+.blessing-line.signature {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #A08970;
+  margin-top: 16px;
+  letter-spacing: 0.06em;
+}
+
 /* ===== 收下按钮 ===== */
 .receive-btn {
   position: relative;

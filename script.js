@@ -55,87 +55,100 @@
   var masterGain = null;
   var oscillators = [];
   var lfoGains = [];
+  var allOscs = []; // 所有振荡器（含 LFO），停止时统一清理
 
   /**
    * 生成舒缓的 C 大调和弦环境音
    * 频率：C4(262) E4(330) G4(392) C5(523)
    */
-  function startAmbientMusic() {
-    if (audioCtx) return;
+  function startAmbientMusic(callback) {
+    if (audioCtx) { if (callback) callback(); return; }
     try {
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     } catch (e) {
+      if (callback) callback();
       return;
     }
 
-    // 确保 AudioContext 处于运行状态（现代浏览器会初始 suspend）
-    if (audioCtx.state === 'suspended') {
-      audioCtx.resume();
-    }
+    // resume() 是异步的，必须等它完成才能调度音频
+    var ready = (audioCtx.state === 'suspended')
+      ? audioCtx.resume()
+      : Promise.resolve();
 
-    // 主音量
-    masterGain = audioCtx.createGain();
-    masterGain.gain.setValueAtTime(0, audioCtx.currentTime);
-    masterGain.gain.linearRampToValueAtTime(0.1, audioCtx.currentTime + 1.5);
-    masterGain.connect(audioCtx.destination);
+    ready.then(function () {
+      if (!audioCtx) return; // 可能在等待期间被 stop 了
 
-    // 低通滤波，让声音更温暖
-    var filter = audioCtx.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(900, audioCtx.currentTime);
-    filter.Q.setValueAtTime(0.4, audioCtx.currentTime);
-    filter.connect(masterGain);
+      var t = audioCtx.currentTime;
 
-    // C 大调和弦频率
-    var freqs = [261.63, 329.63, 392.00, 523.25];
+      // 主音量
+      masterGain = audioCtx.createGain();
+      masterGain.gain.setValueAtTime(0, t);
+      masterGain.gain.linearRampToValueAtTime(0.1, t + 1.5);
+      masterGain.connect(audioCtx.destination);
 
-    for (var i = 0; i < freqs.length; i++) {
-      // 主振荡器：正弦波，纯净温暖
-      var osc = audioCtx.createOscillator();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(freqs[i], audioCtx.currentTime);
+      // 低通滤波
+      var filter = audioCtx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(900, t);
+      filter.Q.setValueAtTime(0.4, t);
+      filter.connect(masterGain);
 
-      // 每个音有独立的增益包络，产生错落的呼吸感
-      var noteGain = audioCtx.createGain();
-      noteGain.gain.setValueAtTime(0, audioCtx.currentTime);
-      noteGain.gain.linearRampToValueAtTime(0.03, audioCtx.currentTime + 0.8 + i * 0.4);
+      var freqs = [261.63, 329.63, 392.00, 523.25];
 
-      // LFO：缓慢的正弦波调制音量
-      var lfo = audioCtx.createOscillator();
-      lfo.type = 'sine';
-      lfo.frequency.setValueAtTime(0.12 + Math.random() * 0.15, audioCtx.currentTime);
+      for (var i = 0; i < freqs.length; i++) {
+        var osc = audioCtx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freqs[i], t);
+        allOscs.push(osc);
 
-      var lfoAmp = audioCtx.createGain();
-      lfoAmp.gain.setValueAtTime(0.015, audioCtx.currentTime);
+        var noteGain = audioCtx.createGain();
+        noteGain.gain.setValueAtTime(0, t);
+        noteGain.gain.linearRampToValueAtTime(0.03, t + 1 + i * 0.4);
 
-      lfo.connect(lfoAmp);
-      lfoAmp.connect(noteGain.gain);
+        var lfo = audioCtx.createOscillator();
+        lfo.type = 'sine';
+        lfo.frequency.setValueAtTime(0.1 + Math.random() * 0.15, t);
+        allOscs.push(lfo);
 
-      osc.connect(noteGain);
-      noteGain.connect(filter);
+        var lfoAmp = audioCtx.createGain();
+        lfoAmp.gain.setValueAtTime(0.015, t);
 
-      osc.start(audioCtx.currentTime);
-      lfo.start(audioCtx.currentTime);
+        lfo.connect(lfoAmp);
+        lfoAmp.connect(noteGain.gain);
+        osc.connect(noteGain);
+        noteGain.connect(filter);
 
-      oscillators.push(osc);
-      lfoGains.push(noteGain);
-    }
+        osc.start(t);
+        lfo.start(t);
+
+        oscillators.push(osc);
+        lfoGains.push(noteGain);
+      }
+
+      if (callback) callback();
+    }).catch(function () {
+      if (callback) callback();
+    });
   }
 
   function stopAmbientMusic() {
     if (!audioCtx) return;
-    masterGain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.6);
+    try {
+      if (masterGain) {
+        masterGain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.5);
+      }
+    } catch (e) {}
     setTimeout(function () {
-      oscillators.forEach(function (o) { try { o.stop(); } catch (e) {} });
-      lfoGains.forEach(function () {});
+      allOscs.forEach(function (o) { try { o.stop(); } catch (e) {} });
+      allOscs = [];
       oscillators = [];
       lfoGains = [];
-      if (audioCtx && audioCtx.state !== 'closed') {
-        audioCtx.close();
-      }
+      try {
+        if (audioCtx && audioCtx.state !== 'closed') audioCtx.close();
+      } catch (e) {}
       audioCtx = null;
       masterGain = null;
-    }, 700);
+    }, 600);
   }
 
   function initMusic() {
@@ -146,9 +159,15 @@
         musicBtn.classList.remove('playing');
         isMusicPlaying = false;
       } else {
-        startAmbientMusic();
         musicBtn.classList.add('playing');
         isMusicPlaying = true;
+        startAmbientMusic(function () {
+          // 如果启动失败，回退状态
+          if (!audioCtx) {
+            musicBtn.classList.remove('playing');
+            isMusicPlaying = false;
+          }
+        });
       }
     });
   }
@@ -339,23 +358,6 @@
       }
     });
   }
-
-  // ===== 页面任意首次点击时预热 AudioContext =====
-  function primeAudio() {
-    var ctx = new (window.AudioContext || window.webkitAudioContext)();
-    if (ctx.state === 'suspended') {
-      ctx.resume().then(function () { ctx.close(); });
-    } else {
-      ctx.close();
-    }
-  }
-  var audioPrimed = false;
-  document.addEventListener('click', function () {
-    if (!audioPrimed) {
-      audioPrimed = true;
-      try { primeAudio(); } catch (e) {}
-    }
-  }, { once: false });
 
   // ===== 启动 =====
   function init() {

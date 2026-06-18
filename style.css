@@ -126,6 +126,8 @@ body {
   justify-content: center;
   transition: all 0.3s ease;
   -webkit-tap-highlight-color: transparent;
+  animation: music-pulse 2.5s ease-in-out infinite;
+  box-shadow: 0 0 0 0 rgba(92, 58, 33, 0.15);
 }
 .music-btn:active {
   transform: scale(0.92);
@@ -133,6 +135,8 @@ body {
 .music-btn.playing {
   border-color: var(--leaf-green);
   background: rgba(79, 138, 61, 0.1);
+  animation: none;
+  box-shadow: 0 0 12px rgba(79, 138, 61, 0.2);
 }
 .music-btn.playing .music-icon {
   color: var(--leaf-green);
@@ -144,6 +148,10 @@ body {
   transition: color 0.3s ease;
 }
 
+@keyframes music-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(92, 58, 33, 0.2); }
+  50%      { box-shadow: 0 0 0 8px rgba(92, 58, 33, 0); }
+}
 @keyframes music-spin {
   from { transform: rotate(0deg); }
   to   { transform: rotate(360deg); }
